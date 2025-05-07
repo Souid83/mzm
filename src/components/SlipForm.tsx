@@ -134,9 +134,12 @@ const SlipForm: React.FC<SlipFormProps> = ({
     goods_description: '',
     volume: '',
     weight: '',
+    metre: '',
     vehicle_type: 'T1',
     exchange_type: '',
     instructions: '',
+    loading_instructions: '',
+    unloading_instructions: '',
     price: '',
     payment_method: type === 'freight' ? 'Virement 30j FDM' : '',
     observations: '',
@@ -193,7 +196,6 @@ const SlipForm: React.FC<SlipFormProps> = ({
     const delivery_time_end = initialData.delivery_time_end;
     const delivery_time = initialData.delivery_time;
 
-    // Chargement
     if (loading_time_start && loading_time_end) {
       setLoadingTimeMode('range');
       setLoadingTimeRange({
@@ -220,7 +222,6 @@ const SlipForm: React.FC<SlipFormProps> = ({
       }));
     }
 
-    // Livraison
     if (delivery_time_start && delivery_time_end) {
       setDeliveryTimeMode('range');
       setDeliveryTimeRange({
@@ -247,7 +248,6 @@ const SlipForm: React.FC<SlipFormProps> = ({
       }));
     }
 
-    // Initialisation des adresses et autres champs
     const slipData = initialData as any;
     const loadParts = slipData.loading_address?.split(',') || [];
     const deliveryParts = slipData.delivery_address?.split(',') || [];
@@ -277,7 +277,6 @@ const SlipForm: React.FC<SlipFormProps> = ({
     const sameAddress = slipData.loading_address === slipData.delivery_address;
     setDeliveryAtLoading(sameAddress);
 
-    // Set kilometers and calculate price per km if available
     if (slipData.kilometers) {
       setKilometers(slipData.kilometers.toString());
       if (slipData.price && slipData.kilometers > 0) {
@@ -299,11 +298,14 @@ const SlipForm: React.FC<SlipFormProps> = ({
         goods_description: slipData.goods_description || '',
         volume: slipData.volume?.toString() || '',
         weight: slipData.weight?.toString() || '',
+        metre: slipData.metre?.toString() || '',
         vehicle_type: slipData.vehicle_type === 'Autre' && slipData.custom_vehicle_type 
           ? 'Autre' 
           : slipData.vehicle_type || 'T1',
         exchange_type: slipData.exchange_type || '',
         instructions: slipData.instructions || '',
+        loading_instructions: slipData.loading_instructions || '',
+        unloading_instructions: slipData.unloading_instructions || '',
         price: slipData.price?.toString() || '',
         payment_method: slipData.payment_method || '',
         observations: slipData.observations || '',
@@ -334,7 +336,6 @@ const SlipForm: React.FC<SlipFormProps> = ({
     }
   }, [purchasePrice, sellingPrice, type]);
 
-  // Calculate price per km when price or kilometers change
   useEffect(() => {
     if (type === 'transport') {
       const price = parseFloat(formData.price);
@@ -430,6 +431,7 @@ const SlipForm: React.FC<SlipFormProps> = ({
       delivery_address: fullDeliveryAddress,
       volume: formData.volume ? Number(formData.volume) : null,
       weight: formData.weight ? Number(formData.weight) : null,
+      metre: formData.metre ? Number(formData.metre) : null,
       price: Number(formData.price) || 0,
       purchase_price: purchasePrice || 0,
       selling_price: sellingPrice || 0,
@@ -464,7 +466,6 @@ const SlipForm: React.FC<SlipFormProps> = ({
           onCancel();
         }
       } else if (type === 'transport') {
-        // Log détaillé pour debug
         console.log('🚚 Données envoyées à updateTransportSlip/createTransportSlip :', cleanedData);
         if (initialData && 'id' in initialData) {
           await updateTransportSlip(initialData.id, cleanedData);
@@ -484,7 +485,7 @@ const SlipForm: React.FC<SlipFormProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <h2 className="text-2xl font-bold mb-6">
           {initialData ? 'Modifier le bordereau' : `Nouveau bordereau de ${type === 'transport' ? 'transport' : 'affrètement'}`}
         </h2>
@@ -719,6 +720,7 @@ const SlipForm: React.FC<SlipFormProps> = ({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Adresse</label>
+                  
                   <input
                     type="text"
                     value={deliveryAddress.address}
@@ -910,28 +912,44 @@ const SlipForm: React.FC<SlipFormProps> = ({
                 />
               )}
 
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Hayon</label>
-                <div className="flex gap-4">
-                  <label className="inline-flex items-center">
-                    <input
-                      type="radio"
-                      checked={!tailgate}
-                      onChange={() => setTailgate(false)}
-                      className="form-radio text-blue-600"
-                    />
-                    <span className="ml-2">Non</span>
-                  </label>
-                  <label className="inline-flex items-center">
-                    <input
-                      type="radio"
-                      checked={tailgate}
-                      onChange={() => setTailgate(true)}
-                      className="form-radio text-blue-600"
-                    />
-                    <span className="ml-2">Oui</span>
-                  </label>
+              <div className="mt-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Hayon</label>
+                  <div className="flex gap-4">
+                    <label className="inline-flex items-center">
+                      <input
+                        type="radio"
+                        checked={!tailgate}
+                        onChange={() => setTailgate(false)}
+                        className="form-radio text-blue-600"
+                      />
+                      <span className="ml-2">Non</span>
+                    </label>
+                    <label className="inline-flex items-center">
+                      <input
+                        type="radio"
+                        checked={tailgate}
+                        onChange={() => setTailgate(true)}
+                        className="form-radio text-blue-600"
+                      />
+                      <span className="ml-2">Oui</span>
+                    </label>
+                  </div>
                 </div>
+
+                {type === 'freight' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Mètre</label>
+                    <input
+                      type="number"
+                      name="metre"
+                      value={formData.metre}
+                      onChange={handleInputChange}
+                      step="0.01"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -961,6 +979,32 @@ const SlipForm: React.FC<SlipFormProps> = ({
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
+
+            {type === 'transport' && (
+              <>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700">Instructions de chargement</label>
+                  <textarea
+                    name="loading_instructions"
+                    value={formData.loading_instructions}
+                    onChange={handleInputChange}
+                    rows={3}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700">Instructions de déchargement</label>
+                  <textarea
+                    name="unloading_instructions"
+                    value={formData.unloading_instructions}
+                    onChange={handleInputChange}
+                    rows={3}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+              </>
+            )}
 
             {type === 'freight' ? (
               <>

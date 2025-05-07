@@ -6,183 +6,6 @@ import { fr } from 'date-fns/locale';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 
-export async function createTransportSlip(data: Omit<TransportSlip, 'id' | 'number' | 'created_at' | 'updated_at'>): Promise<TransportSlip> {
-  const number = await getNextSlipNumber('transport');
-  
-  const payload = cleanPayload({
-    ...data,
-    number
-  });
-
-  console.log('🚨 Cleaned data being sent to Supabase (transport):', payload);
-
-  const { data: slip, error } = await supabase
-    .from('transport_slips')
-    .insert([payload])
-    .select(`
-      id,
-      number,
-      status,
-      client_id,
-      client:client_id(nom),
-      vehicule_id,
-      vehicule:vehicule_id(immatriculation),
-      loading_date,
-      loading_time,
-      loading_time_start,
-      loading_time_end,
-      loading_address,
-      loading_contact,
-      delivery_date,
-      delivery_time,
-      delivery_time_start,
-      delivery_time_end,
-      delivery_address,
-      delivery_contact,
-      goods_description,
-      volume,
-      weight,
-      vehicle_type,
-      custom_vehicle_type,
-      exchange_type,
-      instructions,
-      price,
-      payment_method,
-      observations,
-      photo_required,
-      documents,
-      order_number,
-      tailgate,
-      created_at,
-      updated_at
-    `)
-    .single();
-
-  if (error) {
-    throw new Error(`Error creating transport slip: ${error.message}`);
-  }
-
-  return slip;
-}
-
-export async function updateTransportSlip(id: string, data: Partial<TransportSlip>): Promise<TransportSlip> {
-  const cleaned = cleanPayload(data);
-  console.log('🚨 Cleaned data being sent to Supabase (transport):', cleaned);
-
-  const { data: slip, error } = await supabase
-    .from('transport_slips')
-    .update(cleaned)
-    .eq('id', id)
-    .select(`
-      id,
-      number,
-      status,
-      client_id,
-      client:client_id(nom),
-      vehicule_id,
-      vehicule:vehicule_id(immatriculation),
-      loading_date,
-      loading_time,
-      loading_time_start,
-      loading_time_end,
-      loading_address,
-      loading_contact,
-      delivery_date,
-      delivery_time,
-      delivery_time_start,
-      delivery_time_end,
-      delivery_address,
-      delivery_contact,
-      goods_description,
-      volume,
-      weight,
-      vehicle_type,
-      custom_vehicle_type,
-      exchange_type,
-      instructions,
-      price,
-      payment_method,
-      observations,
-      photo_required,
-      documents,
-      order_number,
-      tailgate,
-      created_at,
-      updated_at
-    `)
-    .single();
-
-  console.log('📥 Response from Supabase (transport):', slip);
-
-  if (error) {
-    throw new Error(`Error updating transport slip: ${error.message}`);
-  }
-
-  if (!slip) {
-    throw new Error(`Update failed: no data returned for transport slip with ID ${id}`);
-  }
-
-  return slip;
-}
-
-export async function getAllTransportSlips(startDate?: string, endDate?: string): Promise<TransportSlip[]> {
-  let query = supabase
-    .from('transport_slips')
-    .select(`
-      id,
-      number,
-      status,
-      client_id,
-      client:client_id(nom),
-      vehicule_id,
-      vehicule:vehicule_id(immatriculation),
-      loading_date,
-      loading_time,
-      loading_time_start,
-      loading_time_end,
-      loading_address,
-      loading_contact,
-      delivery_date,
-      delivery_time,
-      delivery_time_start,
-      delivery_time_end,
-      delivery_address,
-      delivery_contact,
-      goods_description,
-      volume,
-      weight,
-      vehicle_type,
-      custom_vehicle_type,
-      exchange_type,
-      instructions,
-      price,
-      payment_method,
-      observations,
-      photo_required,
-      documents,
-      order_number,
-      tailgate,
-      created_at,
-      updated_at
-    `)
-    .order('created_at', { ascending: false });
-
-  if (startDate) {
-    query = query.gte('loading_date', startDate);
-  }
-  if (endDate) {
-    query = query.lte('loading_date', endDate);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    throw new Error(`Error fetching transport slips: ${error.message}`);
-  }
-
-  return data || [];
-}
-
 export async function createFreightSlip(data: Omit<FreightSlip, 'id' | 'number' | 'created_at' | 'updated_at'>): Promise<FreightSlip> {
   const number = await getNextSlipNumber('freight');
   
@@ -199,7 +22,7 @@ export async function createFreightSlip(data: Omit<FreightSlip, 'id' | 'number' 
       number,
       status,
       client_id,
-      client:client_id(nom),
+      client:client_id(nom, email),
       fournisseur_id,
       fournisseur:fournisseur_id(nom, telephone),
       loading_date,
@@ -217,6 +40,7 @@ export async function createFreightSlip(data: Omit<FreightSlip, 'id' | 'number' 
       goods_description,
       volume,
       weight,
+      metre,
       vehicle_type,
       custom_vehicle_type,
       exchange_type,
@@ -258,7 +82,7 @@ export async function updateFreightSlip(id: string, data: Partial<FreightSlip>):
       number,
       status,
       client_id,
-      client:client_id(nom),
+      client:client_id(nom, email),
       fournisseur_id,
       fournisseur:fournisseur_id(nom, telephone),
       loading_date,
@@ -276,6 +100,7 @@ export async function updateFreightSlip(id: string, data: Partial<FreightSlip>):
       goods_description,
       volume,
       weight,
+      metre,
       vehicle_type,
       custom_vehicle_type,
       exchange_type,
@@ -318,7 +143,7 @@ export async function getAllFreightSlips(startDate?: string, endDate?: string): 
       number,
       status,
       client_id,
-      client:client_id(nom),
+      client:client_id(nom, email),
       fournisseur_id,
       fournisseur:fournisseur_id(nom, telephone),
       loading_date,
@@ -336,6 +161,7 @@ export async function getAllFreightSlips(startDate?: string, endDate?: string): 
       goods_description,
       volume,
       weight,
+      metre,
       vehicle_type,
       custom_vehicle_type,
       exchange_type,
@@ -373,6 +199,192 @@ export async function getAllFreightSlips(startDate?: string, endDate?: string): 
   return data || [];
 }
 
+export async function createTransportSlip(data: Omit<TransportSlip, 'id' | 'number' | 'created_at' | 'updated_at'>): Promise<TransportSlip> {
+  const number = await getNextSlipNumber('transport');
+  
+  const payload = cleanPayload({
+    ...data,
+    number
+  });
+
+  console.log('🚨 Cleaned data being sent to Supabase (transport):', payload);
+
+  const { data: slip, error } = await supabase
+    .from('transport_slips')
+    .insert([payload])
+    .select(`
+      id,
+      number,
+      status,
+      client_id,
+      client:client_id(nom, email),
+      vehicule_id,
+      vehicule:vehicule_id(immatriculation),
+      loading_date,
+      loading_time,
+      loading_time_start,
+      loading_time_end,
+      loading_address,
+      loading_contact,
+      loading_instructions,
+      delivery_date,
+      delivery_time,
+      delivery_time_start,
+      delivery_time_end,
+      delivery_address,
+      delivery_contact,
+      unloading_instructions,
+      goods_description,
+      volume,
+      weight,
+      vehicle_type,
+      custom_vehicle_type,
+      exchange_type,
+      instructions,
+      price,
+      payment_method,
+      observations,
+      photo_required,
+      documents,
+      order_number,
+      tailgate,
+      kilometers,
+      created_at,
+      updated_at
+    `)
+    .single();
+
+  if (error) {
+    throw new Error(`Error creating transport slip: ${error.message}`);
+  }
+
+  return slip;
+}
+
+export async function updateTransportSlip(id: string, data: Partial<TransportSlip>): Promise<TransportSlip> {
+  const cleaned = cleanPayload(data);
+  console.log('🚨 Cleaned data being sent to Supabase (transport):', cleaned);
+
+  const { data: slip, error } = await supabase
+    .from('transport_slips')
+    .update(cleaned)
+    .eq('id', id)
+    .select(`
+      id,
+      number,
+      status,
+      client_id,
+      client:client_id(nom, email),
+      vehicule_id,
+      vehicule:vehicule_id(immatriculation),
+      loading_date,
+      loading_time,
+      loading_time_start,
+      loading_time_end,
+      loading_address,
+      loading_contact,
+      loading_instructions,
+      delivery_date,
+      delivery_time,
+      delivery_time_start,
+      delivery_time_end,
+      delivery_address,
+      delivery_contact,
+      unloading_instructions,
+      goods_description,
+      volume,
+      weight,
+      vehicle_type,
+      custom_vehicle_type,
+      exchange_type,
+      instructions,
+      price,
+      payment_method,
+      observations,
+      photo_required,
+      documents,
+      order_number,
+      tailgate,
+      kilometers,
+      created_at,
+      updated_at
+    `)
+    .single();
+
+  console.log('📥 Response from Supabase (transport):', slip);
+
+  if (error) {
+    throw new Error(`Error updating transport slip: ${error.message}`);
+  }
+
+  if (!slip) {
+    throw new Error(`Update failed: no data returned for transport slip with ID ${id}`);
+  }
+
+  return slip;
+}
+
+export async function getAllTransportSlips(startDate?: string, endDate?: string): Promise<TransportSlip[]> {
+  let query = supabase
+    .from('transport_slips')
+    .select(`
+      id,
+      number,
+      status,
+      client_id,
+      client:client_id(nom, email),
+      vehicule_id,
+      vehicule:vehicule_id(immatriculation),
+      loading_date,
+      loading_time,
+      loading_time_start,
+      loading_time_end,
+      loading_address,
+      loading_contact,
+      loading_instructions,
+      delivery_date,
+      delivery_time,
+      delivery_time_start,
+      delivery_time_end,
+      delivery_address,
+      delivery_contact,
+      unloading_instructions,
+      goods_description,
+      volume,
+      weight,
+      vehicle_type,
+      custom_vehicle_type,
+      exchange_type,
+      instructions,
+      price,
+      payment_method,
+      observations,
+      photo_required,
+      documents,
+      order_number,
+      tailgate,
+      kilometers,
+      created_at,
+      updated_at
+    `)
+    .order('created_at', { ascending: false });
+
+  if (startDate) {
+    query = query.gte('loading_date', startDate);
+  }
+  if (endDate) {
+    query = query.lte('loading_date', endDate);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error(`Error fetching transport slips: ${error.message}`);
+  }
+
+  return data || [];
+}
+
 export async function updateSlipStatus(
   id: string,
   status: SlipStatus,
@@ -390,19 +402,16 @@ export async function updateSlipStatus(
 
 export async function generatePDF(slip: TransportSlip | FreightSlip, type: 'transport' | 'freight' = 'transport'): Promise<Blob> {
   try {
-    // Fetch template
     const templateUrl = type === 'transport' ? '/cmr.html' : '/affretement.html';
     const response = await fetch(templateUrl);
     const template = await response.text();
 
-    // Create temporary container
     const container = document.createElement('div');
     container.style.width = '210mm';
     container.style.position = 'absolute';
     container.style.left = '-9999px';
     document.body.appendChild(container);
 
-    // Format loading time
     let loadingTime = '';
     if (slip.loading_time_start && slip.loading_time_end) {
       loadingTime = `${slip.loading_time_start.slice(0, 5)} à ${slip.loading_time_end.slice(0, 5)}`;
@@ -410,7 +419,6 @@ export async function generatePDF(slip: TransportSlip | FreightSlip, type: 'tran
       loadingTime = slip.loading_time.slice(0, 5);
     }
 
-    // Format delivery time
     let deliveryTime = '';
     if (slip.delivery_time_start && slip.delivery_time_end) {
       deliveryTime = `${slip.delivery_time_start.slice(0, 5)} à ${slip.delivery_time_end.slice(0, 5)}`;
@@ -420,35 +428,11 @@ export async function generatePDF(slip: TransportSlip | FreightSlip, type: 'tran
       deliveryTime = 'Livraison foulée';
     }
 
-    // Determine which urgency type is checked
-    let urgenceChecked = '';
-    let expressChecked = '';
-    let standardChecked = '';
-    
-    if (slip.vehicle_type === 'T1') {
-      urgenceChecked = 'checked';
-    } else if (slip.vehicle_type === 'T2') {
-      expressChecked = 'checked';
-    } else if (slip.vehicle_type === 'T3') {
-      standardChecked = 'checked';
-    }
-
-    // Determine exchange pallets options
-    let chargeesChecked = '';
-    let livreesChecked = '';
-    let renduesExpediteurChecked = '';
-    let renduesDestinataireChecked = '';
-    
-    if (slip.exchange_type === 'Oui') {
-      chargeesChecked = 'checked';
-      livreesChecked = 'checked';
-    }
-
-    // Prepare data
     const data = {
       donneur_ordre: slip.client?.nom || '',
       transporteur: type === 'freight' ? slip.fournisseur?.nom || '' : '',
       tel_transporteur: type === 'freight' ? slip.fournisseur?.telephone || '' : '',
+      contact_fournisseur: type === 'freight' ? slip.fournisseur?.contact_nom || '' : '',
       date: format(new Date(), 'dd/MM/yyyy', { locale: fr }),
       date_heure_chargement: `${format(new Date(slip.loading_date), 'dd/MM/yyyy', { locale: fr })} ${loadingTime}`,
       date_heure_livraison: `${format(new Date(slip.delivery_date), 'dd/MM/yyyy', { locale: fr })} ${deliveryTime}`,
@@ -459,25 +443,20 @@ export async function generatePDF(slip: TransportSlip | FreightSlip, type: 'tran
       marchandise: slip.goods_description || '',
       volume: slip.volume?.toString() || '-',
       poids: slip.weight?.toString() || '-',
-      prix_ht: type === 'freight' ? slip.selling_price?.toString() || '-' : slip.price?.toString() || '-',
+      metre: slip.metre?.toString() || '-',
+      echange: slip.exchange_type === 'Oui' ? 'oui' : 'non',
+      price: type === 'freight' ? slip.purchase_price?.toString() || '-' : slip.price?.toString() || '-',
       mode_reglement: slip.payment_method || '',
       nom_interlocuteur: type === 'freight' ? slip.commercial_id || 'NON RENSEIGNÉ' : '',
       number: slip.number || 'SANS NUMÉRO',
-      instructions_chargement: '',
-      instructions_livraison: '',
       instructions: slip.instructions || '',
+      loading_instructions: slip.loading_instructions || '',
+      unloading_instructions: slip.unloading_instructions || '',
       vehicle_type: slip.vehicle_type === 'Autre' ? slip.custom_vehicle_type : slip.vehicle_type || '',
       tailgate: slip.tailgate ? 'HAYON' : '',
-      urgence_checked: urgenceChecked,
-      express_checked: expressChecked,
-      standard_checked: standardChecked,
-      chargees_checked: chargeesChecked,
-      livrees_checked: livreesChecked,
-      rendues_expediteur_checked: renduesExpediteurChecked,
-      rendues_destinataire_checked: renduesDestinataireChecked
+      kilometers: slip.kilometers?.toString() || '-'
     };
 
-    // Replace placeholders
     let html = template;
     Object.entries(data).forEach(([key, value]) => {
       const regex = new RegExp(`{{${key}}}`, 'g');
@@ -486,7 +465,6 @@ export async function generatePDF(slip: TransportSlip | FreightSlip, type: 'tran
 
     container.innerHTML = html;
 
-    // Convert to canvas
     const canvas = await html2canvas(container, {
       scale: 2,
       useCORS: true,
@@ -495,21 +473,17 @@ export async function generatePDF(slip: TransportSlip | FreightSlip, type: 'tran
       height: 1123
     });
 
-    // Create PDF
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
       format: 'a4'
     });
 
-    // Add canvas to PDF
     const imgData = canvas.toDataURL('image/png');
     pdf.addImage(imgData, 'PNG', 0, 0, 210, 297);
 
-    // Clean up
     document.body.removeChild(container);
     
-    // Return as blob
     return pdf.output('blob');
   } catch (error) {
     console.error('Error generating PDF:', error);

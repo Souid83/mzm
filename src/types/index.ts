@@ -194,6 +194,7 @@ export interface FreightSlip {
   goods_description: string;
   volume?: number;
   weight?: number;
+  metre?: number;
   vehicle_type: string;
   exchange_type: string;
   instructions: string;

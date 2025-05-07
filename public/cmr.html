@@ -32,6 +32,10 @@
     }
     .header-center {
       text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
     .header-right {
       text-align: right;
@@ -104,20 +108,6 @@
       font-weight: bold;
       margin-bottom: 5px;
       text-transform: uppercase;
-    }
-    .price-info {
-      margin: 0 10px 10px 10px;
-      border: 1px solid #000;
-      padding: 10px;
-      display: flex;
-      justify-content: space-between;
-    }
-    .price-left {
-      width: 60%;
-    }
-    .price-right {
-      width: 40%;
-      text-align: right;
     }
     .exchange-pallets {
       margin: 0 10px 10px 10px;
@@ -193,22 +183,16 @@
       font-weight: bold;
       font-size: 14px;
     }
-    .urgence {
-      display: flex;
-      margin: 0 10px 10px 10px;
-    }
-    .urgence-box {
-      width: 33.33%;
-      border: 1px solid #000;
-      padding: 5px;
-      margin: 0 5px;
-      text-align: center;
-    }
-    .urgence-title {
-      font-weight: bold;
-    }
     .checked {
       background-color: #ccc;
+    }
+    .distance-info {
+      margin: 0 10px 10px 10px;
+      padding: 10px;
+      background-color: #f5f5f5;
+      border: 1px solid #000;
+      text-align: center;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -235,7 +219,7 @@
     </div>
 
     <!-- Title -->
-    <div class="title">T1</div>
+    <div class="title">Lettre de voiture</div>
     <div class="subtitle">COURSE - URGENCE - MESSAGERIE - LOCATION AVEC CHAUFFEUR - STOCKAGE - COMMISSIONNAIRE</div>
     <div class="subtitle">FRANCE, EUROPE, MONDE</div>
 
@@ -245,22 +229,23 @@
       <div>N° {{number}}</div>
     </div>
 
+    <!-- Distance Info -->
+    <div class="distance-info">
+      Distance prévue : {{kilometers}} km
+    </div>
+
     <!-- Addresses -->
     <div class="addresses">
       <div class="address-box">
         <div class="address-title">ADRESSE DE CHARGEMENT</div>
         <div>{{adresse_chargement}}</div>
         <div style="margin-top: 10px;">DATE/HEURE: {{date_heure_chargement}}</div>
-        <div style="margin-top: 10px;">INSTRUCTIONS:</div>
-        <div>{{instructions_chargement}}</div>
         <div style="margin-top: 10px;">NOM / SIGNATURE:</div>
       </div>
       <div class="address-box">
         <div class="address-title">ADRESSE DE LIVRAISON</div>
         <div>{{adresse_livraison}}</div>
         <div style="margin-top: 10px;">DATE/HEURE: {{date_heure_livraison}}</div>
-        <div style="margin-top: 10px;">INSTRUCTIONS:</div>
-        <div>{{instructions_livraison}}</div>
         <div style="margin-top: 10px;">NOM / SIGNATURE:</div>
       </div>
     </div>
@@ -279,19 +264,16 @@
       </div>
     </div>
 
-    <!-- Urgence -->
-    <div class="urgence">
-      <div class="urgence-box {{urgence_checked}}">
-        <div class="urgence-title">T1</div>
-        <div>COURSE</div>
+    <!-- Instructions -->
+    <div class="instructions">
+      <div class="instructions-title">INSTRUCTIONS</div>
+      <div style="margin-bottom: 10px;">
+        <strong>Instructions de chargement:</strong><br/>
+        {{loading_instructions}}
       </div>
-      <div class="urgence-box {{express_checked}}">
-        <div class="urgence-title">T2</div>
-        <div>EXPRESS</div>
-      </div>
-      <div class="urgence-box {{standard_checked}}">
-        <div class="urgence-title">T3</div>
-        <div>STANDARD</div>
+      <div>
+        <strong>Instructions de déchargement:</strong><br/>
+        {{unloading_instructions}}
       </div>
     </div>
 
@@ -322,23 +304,11 @@
     <div class="reservations">
       <div class="reservation-box">
         <div class="reservation-title">RÉSERVES AU CHARGEMENT</div>
-        <div style="height: 60px;"></div>
+        <div>{{instructions_chargement}}</div>
       </div>
       <div class="reservation-box">
         <div class="reservation-title">RÉSERVES À LA LIVRAISON</div>
-        <div style="height: 60px;"></div>
-      </div>
-    </div>
-
-    <!-- Price Information -->
-    <div class="price-info">
-      <div class="price-left">
-        <div><strong>Prix de transport:</strong> {{prix_ht}} € HT</div>
-        <div><small>*taxe gasoil inclus*</small></div>
-      </div>
-      <div class="price-right">
-        <div><strong>Mode de règlement:</strong></div>
-        <div>{{mode_reglement}}</div>
+        <div>{{instructions_livraison}}</div>
       </div>
     </div>
 

@@ -134,6 +134,51 @@ const Freight = () => {
         </button>
       </div>
 
+      {showForm && (
+        <SlipForm
+          type="freight"
+          onSubmit={handleCreate}
+          onCancel={() => setShowForm(false)}
+          loading={loading}
+        />
+      )}
+
+      {editingSlip && (
+        <SlipForm
+          type="freight"
+          onSubmit={handleUpdate}
+          onCancel={() => setEditingSlip(null)}
+          initialData={editingSlip}
+        />
+      )}
+
+      {emailSlip && (
+        <EmailModal
+          slip={emailSlip}
+          type="freight"
+          onClose={() => setEmailSlip(null)}
+          clientEmail={emailSlip.client?.email}
+        />
+      )}
+
+      {uploadingSlip && (
+        <DocumentUploaderModal
+          slipId={uploadingSlip.id}
+          slipType="freight"
+          onClose={() => setUploadingSlip(null)}
+          onUploadComplete={fetchSlips}
+        />
+      )}
+
+      {viewingDocuments && (
+        <DocumentViewerModal
+          slipId={viewingDocuments.id}
+          slipType="freight"
+          onClose={() => setViewingDocuments(null)}
+          onDocumentDeleted={fetchSlips}
+        />
+      )}
+
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-50">
@@ -168,7 +213,7 @@ const Freight = () => {
                   {slip.client?.nom}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  {new Date(slip.loading_date).toLocaleDateString('fr-FR')}
+                  {format(new Date(slip.loading_date), 'dd/MM/yyyy', { locale: fr })}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {slip.fournisseur?.nom}
@@ -202,50 +247,6 @@ const Freight = () => {
           </tbody>
         </table>
       </div>
-
-      {showForm && (
-        <SlipForm
-          type="freight"
-          onSubmit={handleCreate}
-          onCancel={() => setShowForm(false)}
-          loading={loading}
-        />
-      )}
-
-      {editingSlip && (
-        <SlipForm
-          type="freight"
-          onSubmit={handleUpdate}
-          onCancel={() => setEditingSlip(null)}
-          initialData={editingSlip}
-        />
-      )}
-
-      {emailSlip && (
-        <EmailModal
-          client={emailSlip.client}
-          pdfUrl=""
-          onClose={() => setEmailSlip(null)}
-        />
-      )}
-
-      {uploadingSlip && (
-        <DocumentUploaderModal
-          slipId={uploadingSlip.id}
-          slipType="freight"
-          onClose={() => setUploadingSlip(null)}
-          onUploadComplete={fetchSlips}
-        />
-      )}
-
-      {viewingDocuments && (
-        <DocumentViewerModal
-          slipId={viewingDocuments.id}
-          slipType="freight"
-          onClose={() => setViewingDocuments(null)}
-          onDocumentDeleted={fetchSlips}
-        />
-      )}
     </div>
   );
 };

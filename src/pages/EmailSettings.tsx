@@ -98,15 +98,22 @@ export default function EmailSettings() {
   const testSmtpConnection = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase.functions.invoke('test-smtp', {
+      const { data, error } = await supabase.functions.invoke('test-smtp', {
         body: smtpSettings
       });
 
-      if (error) throw error;
+      if (error) {
+        throw new Error(error.message || 'Erreur lors du test SMTP');
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
       toast.success('Connexion SMTP réussie');
     } catch (error) {
       console.error('SMTP test error:', error);
-      toast.error('Erreur de connexion SMTP');
+      toast.error(error.message || 'Erreur de connexion SMTP');
     } finally {
       setLoading(false);
     }

@@ -1,14 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Truck, Euro, Calendar, Phone, Mail, Pencil } from 'lucide-react';
 import DashboardCard from '../components/DashboardCard';
+import SlipForm from '../components/SlipForm';
 import SlipStatusSelect from '../components/SlipStatusSelect';
-import ContactsModal from '../components/ContactsModal';
-import FournisseurDetailsModal from '../components/FournisseurDetailsModal';
-import { useAffretements } from '../hooks/useAffretements';
-import { useLivraisons } from '../hooks/useLivraisons';
+import EmailModal from '../components/EmailModal';
+import DocumentUploaderModal from '../components/DocumentUploaderModal';
+import DocumentViewerModal from '../components/DocumentViewerModal';
+import ActionButtons from '../components/ActionButtons';
+import TableHeader from '../components/TableHeader';
+import { useSlips } from '../hooks/useSlips';
 import { useClients } from '../hooks/useClients';
 import { useFournisseurs } from '../hooks/useFournisseurs';
-import type { Client, Fournisseur } from '../types';
+import { generatePDF } from '../services/slips';
+import type { Client, Fournisseur, TransportSlip, FreightSlip } from '../types';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import toast from 'react-hot-toast';
 
 const Pilotage = () => {
   const [activeTab, setActiveTab] = useState<'deliveries' | 'freight' | null>(null);
@@ -18,35 +25,78 @@ const Pilotage = () => {
   });
   const [showContactsModal, setShowContactsModal] = useState<Client | null>(null);
   const [showFournisseurModal, setShowFournisseurModal] = useState<Fournisseur | null>(null);
+  const [editingSlip, setEditingSlip] = useState<TransportSlip | FreightSlip | null>(null);
+  const [emailSlip, setEmailSlip] = useState<TransportSlip | FreightSlip | null>(null);
+  const [uploadingSlip, setUploadingSlip] = useState<TransportSlip | FreightSlip | null>(null);
+  const [viewingDocuments, setViewingDocuments] = useState<TransportSlip | FreightSlip | null>(null);
   
-  const { data: affretements, loading: loadingAffretements, refresh: refreshAffretements } = useAffretements();
-  const { data: livraisons, loading: loadingLivraisons, refresh: refreshLivraisons } = useLivraisons();
   const { data: clients } = useClients();
   const { data: fournisseurs } = useFournisseurs();
 
-  // Calculate dashboard metrics
-  const totalLivraisons = livraisons.length;
-  const totalAffretements = affretements.length;
-  const margeDuJour = Math.floor(affretements
-    .reduce((sum, a) => sum + (a.margin || 0), 0));
-  const caDuJour = Math.floor(affretements
-    .reduce((sum, a) => sum + (a.sellingPrice || 0), 0));
+  const { 
+    data: transportSlips, 
+    loading: loadingTransport,
+    refresh: refreshTransport
+  } = useSlips('transport', dateRange.start, dateRange.end);
 
-  const handleClientClick = (clientName: string) => {
-    const client = clients.find(c => c.nom === clientName);
+  const { 
+    data: freightSlips, 
+    loading: loadingFreight,
+    refresh: refreshFreight
+  } = useSlips('freight', dateRange.start, dateRange.end);
+
+  const totalLivraisons = transportSlips.length;
+  const totalAffretements = freightSlips.length;
+  const margeDuJour = Math.floor(freightSlips
+    .reduce((sum, a) => sum + (a.margin || 0), 0));
+  const caDuJour = Math.floor(freightSlips
+    .reduce((sum, a) => sum + (a.selling_price || 0), 0));
+
+  const handleClientClick = (clientId: string) => {
+    const client = clients.find(c => c.id === clientId);
     if (client) {
       setShowContactsModal(client);
     }
   };
 
-  const handleFournisseurClick = (fournisseurName: string) => {
-    const fournisseur = fournisseurs.find(f => f.nom === fournisseurName);
+  const handleFournisseurClick = (fournisseurId: string) => {
+    const fournisseur = fournisseurs.find(f => f.id === fournisseurId);
     if (fournisseur) {
       setShowFournisseurModal(fournisseur);
     }
   };
 
-  if (loadingAffretements || loadingLivraisons) {
+  const handleDownload = async (slip: TransportSlip | FreightSlip, type: 'transport' | 'freight') => {
+    try {
+      const pdfBlob = await generatePDF(slip, type);
+      
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      const clientName = slip.client?.nom || 'Client';
+      const slipNumber = slip.number;
+      const currentDate = format(new Date(), 'dd-MM-yyyy', { locale: fr });
+      const filename = `${clientName} - ${slipNumber} - ${currentDate}.pdf`;
+      
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      toast.success('Bordereau téléchargé avec succès');
+    } catch (error) {
+      console.error('Error downloading slip:', error);
+      toast.error('Erreur lors du téléchargement du bordereau');
+    }
+  };
+
+  const getDocumentCount = (slip: TransportSlip | FreightSlip) => {
+    return slip.documents ? Object.keys(slip.documents).length : 0;
+  };
+
+  if (loadingTransport || loadingFreight) {
     return (
       <div className="p-8 max-w-7xl mx-auto">
         <div className="flex items-center justify-center h-64">
@@ -190,6 +240,61 @@ const Pilotage = () => {
         />
       )}
 
+      {editingSlip && (
+        <SlipForm
+          type={activeTab === 'freight' ? 'freight' : 'transport'}
+          onSubmit={() => {
+            setEditingSlip(null);
+            if (activeTab === 'freight') {
+              refreshFreight();
+            } else {
+              refreshTransport();
+            }
+          }}
+          onCancel={() => setEditingSlip(null)}
+          initialData={editingSlip}
+        />
+      )}
+
+      {emailSlip && (
+        <EmailModal
+          slip={emailSlip}
+          type={activeTab === 'freight' ? 'freight' : 'transport'}
+          onClose={() => setEmailSlip(null)}
+          clientEmail={emailSlip.client?.email}
+        />
+      )}
+
+      {uploadingSlip && (
+        <DocumentUploaderModal
+          slipId={uploadingSlip.id}
+          slipType={activeTab === 'freight' ? 'freight' : 'transport'}
+          onClose={() => setUploadingSlip(null)}
+          onUploadComplete={() => {
+            if (activeTab === 'freight') {
+              refreshFreight();
+            } else {
+              refreshTransport();
+            }
+          }}
+        />
+      )}
+
+      {viewingDocuments && (
+        <DocumentViewerModal
+          slipId={viewingDocuments.id}
+          slipType={activeTab === 'freight' ? 'freight' : 'transport'}
+          onClose={() => setViewingDocuments(null)}
+          onDocumentDeleted={() => {
+            if (activeTab === 'freight') {
+              refreshFreight();
+            } else {
+              refreshTransport();
+            }
+          }}
+        />
+      )}
+
       {activeTab && (
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           <table className="w-full">
@@ -218,68 +323,96 @@ const Pilotage = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vente HT</th>
                   </>
                 )}
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {activeTab === 'freight'
-                ? affretements.map((freight) => (
-                    <tr key={freight.id}>
+                ? freightSlips.map((slip) => (
+                    <tr key={slip.id}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <SlipStatusSelect
-                          id={freight.id}
-                          status={freight.status}
+                          id={slip.id}
+                          status={slip.status}
                           type="freight"
-                          onUpdate={refreshAffretements}
+                          onUpdate={refreshFreight}
                         />
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           <span
                             className="cursor-pointer hover:text-blue-600"
-                            onClick={() => handleClientClick(freight.client)}
+                            onClick={() => handleClientClick(slip.client_id || '')}
                           >
-                            {freight.client}
+                            {slip.client?.nom}
                           </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">{freight.date}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{slip.loading_date}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className="cursor-pointer hover:text-blue-600"
-                          onClick={() => handleFournisseurClick(freight.subcontractor)}
+                          onClick={() => handleFournisseurClick(slip.fournisseur_id || '')}
                         >
-                          {freight.subcontractor}
+                          {slip.fournisseur?.nom}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">{Math.floor(freight.purchasePrice)} €</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{Math.floor(freight.sellingPrice)} €</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{Math.floor(slip.purchase_price || 0)} €</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{Math.floor(slip.selling_price || 0)} €</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <ActionButtons
+                          slip={slip}
+                          onEdit={() => setEditingSlip(slip)}
+                          onEmail={() => setEmailSlip(slip)}
+                          onUpload={() => setUploadingSlip(slip)}
+                          onView={() => setViewingDocuments(slip)}
+                          onDownload={() => handleDownload(slip, 'freight')}
+                          documentCount={getDocumentCount(slip)}
+                          showBPA={true}
+                        />
+                      </td>
                     </tr>
                   ))
-                : livraisons.map((delivery) => (
-                    <tr key={delivery.id}>
+                : transportSlips.map((slip) => (
+                    <tr key={slip.id}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <SlipStatusSelect
-                          id={delivery.id}
-                          status={delivery.status}
+                          id={slip.id}
+                          status={slip.status}
                           type="transport"
-                          onUpdate={refreshLivraisons}
+                          onUpdate={refreshTransport}
                         />
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           <span
                             className="cursor-pointer hover:text-blue-600"
-                            onClick={() => handleClientClick(delivery.client)}
+                            onClick={() => handleClientClick(slip.client_id || '')}
                           >
-                            {delivery.client}
+                            {slip.client?.nom}
                           </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">{delivery.loadingDate}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{slip.loading_date}</td>
                       <td className="px-6 py-4 whitespace-nowrap">John Doe</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{delivery.vehicle}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{Math.floor(delivery.priceBeforeTax)} €</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{Math.floor(delivery.pricePerKm)} €</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{slip.vehicle_type}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{Math.floor(slip.price)} €</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {slip.kilometers && slip.kilometers > 0 
+                          ? `${(slip.price / slip.kilometers).toFixed(2)} €` 
+                          : '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <ActionButtons
+                          slip={slip}
+                          onEdit={() => setEditingSlip(slip)}
+                          onEmail={() => setEmailSlip(slip)}
+                          onUpload={() => setUploadingSlip(slip)}
+                          onView={() => setViewingDocuments(slip)}
+                          onDownload={() => handleDownload(slip, 'transport')}
+                          documentCount={getDocumentCount(slip)}
+                        />
+                      </td>
                     </tr>
                   ))}
             </tbody>

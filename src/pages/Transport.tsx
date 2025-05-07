@@ -174,9 +174,10 @@ const Transport = () => {
 
       {emailSlip && (
         <EmailModal
-          client={emailSlip.client}
-          pdfUrl=""
+          slip={emailSlip}
+          type="transport"
           onClose={() => setEmailSlip(null)}
+          clientEmail={emailSlip.client?.email}
         />
       )}
 
